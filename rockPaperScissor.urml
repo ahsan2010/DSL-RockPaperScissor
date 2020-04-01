@@ -1,0 +1,50 @@
+model RockPaperScissor {
+	protocol gameStartProtocol {
+		incoming {
+		}
+		outgoing {
+			sendLevelNumber(int level)
+		}
+	}
+	protocol sendChoiceProtocol {
+		incoming {
+		}
+		outgoing {
+			sendLevelNumber(int level)
+		}
+	}
+	protocol sendShowProtocol {
+		incoming {
+		}
+		outgoing {
+			sendLevelNumber(int level)
+		}
+	}
+	root capsule Top {
+		capsuleInstance referee : Referee
+		capsuleInstance player1 : Player1
+		capsuleInstance player2 : Player2
+		port gameStartProt : gameStartProtocol
+		port getChoiceProt : sendChoiceProtocol
+		port sendShowProt :  sendShowProtocol
+	}
+	capsule Referee {
+		timerPort timer
+		attribute int choiceP1 := 0
+		attribute int choiceP2 := 0
+		attribute int totalResponses := 0
+		attribute int totalWinP1 := 0
+		attribute int totalWinP2 := 0
+		attribute int bestOf := 6
+		attribute int count := 0
+		stateMachine {
+			
+		}
+	}
+	capsule Player1 {
+		
+	}
+	capsule Player2 {
+		
+	}
+}
