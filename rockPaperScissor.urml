@@ -1,23 +1,24 @@
 model RockPaperScissor {
 	protocol gameStartProtocol {
 		incoming {
+			startGame(int round)
 		}
 		outgoing {
-			sendLevelNumber(int level)
+			
 		}
 	}
-	protocol sendChoiceProtocol {
+	protocol askChoiceProtocol {
 		incoming {
 		}
 		outgoing {
-			sendLevelNumber(int level)
+			askToShow()
 		}
 	}
 	protocol sendShowProtocol {
 		incoming {
 		}
 		outgoing {
-			sendLevelNumber(int level)
+			sendChoice(int level)
 		}
 	}
 	root capsule Top {
@@ -25,11 +26,22 @@ model RockPaperScissor {
 		capsuleInstance player1 : Player1
 		capsuleInstance player2 : Player2
 		port gameStartProt : gameStartProtocol
-		port getChoiceProt : sendChoiceProtocol
-		port sendShowProt :  sendShowProtocol
+		stateMachine {
+			final state single
+			transition init : initial -> single {
+				action {
+					
+					var int x := 0
+					
+				}
+			}
+		}
+		 
 	}
 	capsule Referee {
 		timerPort timer
+		logPort logger
+		
 		attribute int choiceP1 := 0
 		attribute int choiceP2 := 0
 		attribute int totalResponses := 0
@@ -47,6 +59,9 @@ model RockPaperScissor {
 			}
 			
 			transition: state1 -> state2 {
+				action{
+					log logger with "Referee State 2 "
+				} 
 			}
 			
 			transition: state2 -> state3 {

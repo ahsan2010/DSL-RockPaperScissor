@@ -4,6 +4,7 @@ model ConsumerProducer {
 		capsuleInstance c : Consumer
 		capsuleInstance p : Producer
 		capsuleInstance b : BoundedBuffer
+		
 		connector c.toGet and b.consumer
 		connector p.toPut and b.producer
 	}
