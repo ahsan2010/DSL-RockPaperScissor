@@ -1,47 +1,59 @@
+
 model RockPaperScissor {
 	protocol gameStartProtocol {
 		incoming {
+		}
+		outgoing {
 			startGame(int round)
-		}
-		outgoing {
-			
+			continueGame()
 		}
 	}
-	protocol askChoiceProtocol {
+	protocol mainGameProtocol {
 		incoming {
 		}
 		outgoing {
-			askToShow()
-		}
-	}
-	protocol sendShowProtocol {
-		incoming {
-		}
-		outgoing {
-			sendChoice(int level)
+			go()
+			sendChoice(int choice)
 		}
 	}
 	root capsule Top {
+	// Create 3 capsules for each entity
 		capsuleInstance referee : Referee
 		capsuleInstance player1 : Player1
 		capsuleInstance player2 : Player2
+
+		// Prot for starting the game
 		port gameStartProt : gameStartProtocol
+		// Log port
+		logPort logger
+
+		//Connector to different ports
+		connector gameStartProt and referee.gameStartProt
+		connector referee.askP1 and player1.askingP1
+		connector referee.askP2 and player2.askingP2
+		connector referee.receiveChoiceP1 and player1.chooseP1
+		connector referee.receiveChoiceP2 and player2.chooseP2
 		stateMachine {
 			final state single
 			transition init : initial -> single {
 				action {
-					
 					var int x := 0
-					
+					choose( x , 10 )
+					log logger with "Top initialization Set BestOf = " ^ x
+					send gameStartProt.startGame(x)
 				}
 			}
 		}
-		 
 	}
 	capsule Referee {
+		external port ~gameStartProt : gameStartProtocol
+		external port askP1 : mainGameProtocol
+		external port askP2 : mainGameProtocol
+		external port ~receiveChoiceP1 : mainGameProtocol
+		external port ~receiveChoiceP2 : mainGameProtocol
 		timerPort timer
+		attribute int timeoutPeriod := 10
 		logPort logger
-		
 		attribute int choiceP1 := 0
 		attribute int choiceP2 := 0
 		attribute int totalResponses := 0
@@ -54,27 +66,150 @@ model RockPaperScissor {
 			state state2
 			state state3
 			state state4 // calculate resultForROund
-			
+			state state5
 			transition init : initial -> state1 {
+				action {
+					log logger with "Initialize Referee"
+				}
 			}
-			
-			transition: state1 -> state2 {
-				action{
-					log logger with "Referee State 2 "
-				} 
+			transition : state1 -> state2 {
+				triggeredBy gameStartProt.startGame(int round)
+				action {
+					bestOf := round
+					log logger with "[State 2] Referee starts game with total round: " ^ bestOf
+					log logger with "[State 2] Referee sending Player 1 for his choice.."
+					send askP1.go()
+				}
 			}
-			
-			transition: state2 -> state3 {
+			transition : state2 -> state3 {
+				triggeredBy receiveChoiceP1.sendChoice(int choice)
+				action {
+					count := count + 1
+					choiceP1 := choice
+					log logger with "[State 3] Referee collect Player 1 choice: " ^ choiceP1
+					send askP2.go()
+					log logger with "[State 3] Referee sending Player 2 for his choice.."
+				}
 			}
-			transition : state3 -> state4{
-				
+			transition : state3 -> state4 {
+				triggeredBy receiveChoiceP2.sendChoice(int player2Choice)
+				action {
+					choiceP2 := player2Choice
+					log logger with "[State 4] Referee collect Player 2 choice " ^ choiceP2
+					if (choiceP1 == 0) {
+						if (choiceP2 == 1) {
+							totalWinP2 := totalWinP2 + 1
+						}
+						if (choiceP2 == 2) {
+							totalWinP1 := totalWinP1 + 1
+						}
+					}
+					if (choiceP1 == 1) {
+						if (choiceP2 == 0) {
+							totalWinP1 := totalWinP1 + 1
+						}
+						if (choiceP2 == 2) {
+							totalWinP2 := totalWinP2 + 1
+						}
+					}
+					if (choiceP1 == 2) {
+						if (choiceP2 == 0) {
+							totalWinP2 := totalWinP2 + 1
+						}
+						if (choiceP2 == 1) {
+							totalWinP1 := totalWinP1 + 1
+						}
+					}
+					log logger with "[Result] [Round " ^ count ^ "] Player 1: " ^ totalWinP1 ^ " Player 2 " ^ totalWinP2
+					inform timer in timeoutPeriod
+				}
+			}
+			transition : state4 -> state2 {
+				triggeredBy timeout timer
+				action {
+					//log logger with "Choice point "
+					if (count < bestOf) {
+						send askP1.go()
+					}
+					if (count == bestOf) {
+						log logger with "[Finished] The game is Finished....."
+							
+						if (totalWinP1 == totalWinP2) {
+							log logger with "[Final Result] The game is drawn"
+						}
+						if (totalWinP1 > totalWinP2) {
+							log logger with "[Final Result] Player 1 is winner!!"
+						}
+						if (totalWinP2 > totalWinP1) {
+							log logger with "[Final Result] Player 2 is winner!!"
+						}
+					}
+				}
 			}
 		}
 	}
 	capsule Player1 {
-		
+		external port ~askingP1 : mainGameProtocol
+		external port chooseP1 : mainGameProtocol
+		logPort logger
+		timerPort timer
+		attribute int timeoutPeriod := 100
+		stateMachine {
+			state state1
+			state state2
+			transition init : initial -> state1 {
+				action {
+					log logger with "Player 1 initialized and in State 1 "
+				}
+			}
+			transition : state1 -> state2 {
+				triggeredBy askingP1.go()
+				action {
+					log logger with "Player 1 in State 2 "
+					inform timer in timeoutPeriod
+				}
+			}
+			transition : state2 -> state1 {
+				triggeredBy timeout timer
+				action {
+					var int x := 0
+					choose( x , 3 )
+					log logger with "[State 2] Player 1 choose " ^ x
+					send chooseP1.sendChoice(x)
+				}
+			}
+		}
 	}
 	capsule Player2 {
-		
+		external port ~askingP2 : mainGameProtocol
+		external port chooseP2 : mainGameProtocol
+		logPort logger
+		timerPort timer
+		attribute int timeoutPeriod := 100
+		stateMachine {
+			state state1
+			state state2
+			transition init : initial -> state1 {
+				action {
+					log logger with "Player 2 initialized and in State 1 "
+				}
+			}
+			transition : state1 -> state2 {
+				triggeredBy askingP2.go()
+				action {
+					log logger with "Player 2 in State 2 "
+					inform timer in timeoutPeriod
+				}
+			}
+			transition : state2 -> state1 {
+				triggeredBy timeout timer
+				action {
+					var int x := 0
+					choose( x , 3 )
+					log logger with "[State 2] Player 2 choose " ^ x
+					send chooseP2.sendChoice(1)
+				}
+			}
+		}
 	}
 }
