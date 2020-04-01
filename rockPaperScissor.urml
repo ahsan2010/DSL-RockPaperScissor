@@ -38,7 +38,22 @@ model RockPaperScissor {
 		attribute int bestOf := 6
 		attribute int count := 0
 		stateMachine {
+			state state1
+			state state2
+			state state3
+			state state4 // calculate resultForROund
 			
+			transition init : initial -> state1 {
+			}
+			
+			transition: state1 -> state2 {
+			}
+			
+			transition: state2 -> state3 {
+			}
+			transition : state3 -> state4{
+				
+			}
 		}
 	}
 	capsule Player1 {
